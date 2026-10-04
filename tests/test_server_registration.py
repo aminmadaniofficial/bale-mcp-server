@@ -24,6 +24,7 @@ async def test_all_tools_registered():
         "bale_disconnect",
         # Messaging
         "bale_get_dialogs",
+        "bale_search_dialogs",
         "bale_get_chat_history",
         "bale_send_message",
         "bale_edit_message",

@@ -162,21 +162,66 @@ class SessionManager:
 
             return await self.get_me_summary()
 
+    async def ensure_connected(self) -> Client:
+        """
+        Ensures the client is connected with an active, open WebSocket.
+        If connection was lost, reset, or closed due to collision, automatically reconnects.
+        """
+        if self._active_client is None:
+            if config.AUTO_CONNECT:
+                await self.connect()
+            else:
+                raise RuntimeError("No active Bale session connected. Use bale_connect_session first.")
+
+        session = getattr(self._active_client, "session", None)
+        ws = getattr(session, "ws", None)
+        is_closed = ws is None or ws.closed or not getattr(session, "_running", False)
+
+        if is_closed:
+            logger.info(f"Session '{self._active_session_name}' connection dropped or closed by server. Auto-reconnecting...")
+            target_name = self._active_session_name
+            try:
+                await self._active_client.stop()
+            except Exception:
+                pass
+            self._active_client = None
+            await self.connect(target_name)
+
+        return self._active_client
+
     async def get_client(self) -> Client:
         """
-        Returns the active connected client. If not connected, attempts auto-connection.
+        Returns the active connected client, ensuring the connection is healthy.
         """
-        if self._active_client is not None:
-            return self._active_client
+        return await self.ensure_connected()
 
-        if config.AUTO_CONNECT:
-            await self.connect()
-            if self._active_client is not None:
-                return self._active_client
+    async def execute_with_retry(self, operation) -> Any:
+        """
+        Executes an API operation against the active client.
+        If a connection error or socket collision occurs, attempts one automatic reconnection.
+        """
+        client = await self.ensure_connected()
+        try:
+            return await operation(client)
+        except Exception as e:
+            err_msg = str(e).lower()
+            is_conn_error = any(kw in err_msg for kw in (
+                "closed", "closing transport", "reset", "connection reset", "not connected", "broken pipe"
+            ))
+            if is_conn_error:
+                logger.warning(f"Connection error detected ({e}). Reconnecting and retrying operation...")
+                target_name = self._active_session_name
+                if self._active_client:
+                    try:
+                        await self._active_client.stop()
+                    except Exception:
+                        pass
+                    self._active_client = None
+                await self.connect(target_name)
+                client = self._active_client
 
-        raise RuntimeError(
-            "No active Bale session connected. Use bale_connect_session or bale_auth_request_code first."
-        )
+                return await operation(client)
+            raise
 
     async def get_me_summary(self) -> Dict[str, Any]:
         """

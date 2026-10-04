@@ -45,7 +45,7 @@ LLM Client (Claude Desktop / Cursor / Antigravity / Cline)
 
 ---
 
-## 🛠️ Complete MCP Tools Catalog (31 Tools)
+## 🛠️ Complete MCP Tools Catalog (32 Tools)
 
 ### 🔐 Authentication & Session Management
 | Tool Name | Description |
@@ -61,7 +61,8 @@ LLM Client (Claude Desktop / Cursor / Antigravity / Cline)
 ### 💬 Messaging & Dialogs
 | Tool Name | Description |
 | :--- | :--- |
-| `bale_get_dialogs` | Retrieve recent chats, groups, and channels with unread counts and last message previews. |
+| `bale_get_dialogs` | Retrieve recent chats, groups, and channels with resolved titles/names, unread counts, and last messages. |
+| `bale_search_dialogs` | Search dialogs and groups by title/name (in Persian or English) or chat ID. |
 | `bale_get_chat_history` | Fetch recent message history from a chat, group, or channel. |
 | `bale_send_message` | Send a text message to a user, group, or channel with optional reply support. |
 | `bale_edit_message` | Edit an existing text message sent previously in a chat. |

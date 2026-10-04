@@ -9,50 +9,135 @@ from bale_mcp.session_manager import session_manager
 from bale_mcp.utils import resolve_chat_type, format_message_summary, serialize_entity
 
 
+import asyncio
+import time
+from aiobale.enums import ChatType
+
+# In-memory cache for resolved chat titles to minimize RPC latency
+_TITLE_CACHE: Dict[int, str] = {}
+
+
+async def _resolve_title(client: Any, chat_id: int, peer_type_val: int) -> str:
+    """Helper to resolve group or user title with caching and strict timeout."""
+    if chat_id in _TITLE_CACHE:
+        return _TITLE_CACHE[chat_id]
+
+    try:
+        # Group or SuperGroup or Channel
+        if peer_type_val in (2, 3, 5):
+            group = await asyncio.wait_for(client.get_full_group(chat_id), timeout=3.0)
+            title = getattr(group, "title", f"Group {chat_id}") or f"Group {chat_id}"
+            _TITLE_CACHE[chat_id] = title
+            return title
+        else:
+            # Private chat / User
+            user = await asyncio.wait_for(client.load_user(chat_id, ChatType.PRIVATE), timeout=3.0)
+            name = getattr(user, "name", f"User {chat_id}") or f"User {chat_id}"
+            _TITLE_CACHE[chat_id] = name
+            return name
+    except Exception:
+        fallback = f"Chat {chat_id}"
+        return fallback
+
+
 def register_messaging_tools(server: MCPServer) -> None:
     """Registers messaging and dialog management tools on the MCP server."""
 
     @server.tool(
         name="bale_get_dialogs",
-        description="Retrieve the list of recent chats, groups, and channels (dialogs) with unread counts and last message previews.",
+        description="Retrieve the list of recent chats, groups, and channels with resolved titles/names, unread counts, and last messages.",
     )
     async def bale_get_dialogs(
         limit: int = 30,
-        exclude_pinned: bool = False
+        offset_date: Optional[int] = None,
+        exclude_pinned: bool = False,
+        resolve_titles: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Fetches user dialogs/conversations.
 
         Args:
             limit: Maximum number of dialogs to return (default 30).
+            offset_date: Optional timestamp in milliseconds. Defaults to current time for latest dialogs.
             exclude_pinned: Whether to exclude pinned dialogs.
+            resolve_titles: Whether to resolve human-readable chat/group titles (default True).
         """
         client = await session_manager.get_client()
+        eff_offset = int(time.time() * 1000) if (offset_date is None or offset_date <= 0) else offset_date
+
         try:
-            dialogs = await client.load_dialogs(limit=limit, exclude_pinned=exclude_pinned)
+            dialogs = await client.load_dialogs(
+                limit=limit,
+                offset_date=eff_offset,
+                exclude_pinned=exclude_pinned,
+            )
         except Exception as e:
             return [{"error": f"Failed to retrieve dialogs: {e}"}]
 
-        results: List[Dict[str, Any]] = []
+        # Prepare base dialog items
+        raw_items: List[Dict[str, Any]] = []
         for d in dialogs:
             peer = getattr(d, "peer", None)
             peer_id = getattr(peer, "id", None)
-            peer_type_raw = getattr(peer, "type", None)
+            peer_type_obj = getattr(peer, "type", None)
+            peer_type_val = int(peer_type_obj.value if hasattr(peer_type_obj, "value") else peer_type_obj)
             unread_count = getattr(d, "unread_count", 0)
             top_message = getattr(d, "top_message", None)
 
             item: Dict[str, Any] = {
                 "chat_id": peer_id,
-                "peer_type": getattr(peer_type_raw, "name", str(peer_type_raw)),
+                "peer_type": getattr(peer_type_obj, "name", str(peer_type_obj)),
+                "_peer_type_val": peer_type_val,
                 "unread_count": unread_count,
             }
 
             if top_message:
                 item["last_message"] = format_message_summary(top_message)
 
-            results.append(item)
+            raw_items.append(item)
 
-        return results
+        # Concurrently resolve titles if requested
+        if resolve_titles and raw_items:
+            titles = await asyncio.gather(
+                *(_resolve_title(client, item["chat_id"], item["_peer_type_val"]) for item in raw_items)
+            )
+            for item, title in zip(raw_items, titles):
+                item["title"] = title
+                item.pop("_peer_type_val", None)
+        else:
+            for item in raw_items:
+                item.pop("_peer_type_val", None)
+
+        return raw_items
+
+    @server.tool(
+        name="bale_search_dialogs",
+        description="Search active dialogs, groups, and conversations by name/title (supports Persian or English) or chat ID.",
+    )
+    async def bale_search_dialogs(
+        query: str,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Searches dialogs by title, username, or chat ID.
+
+        Args:
+            query: The search term (e.g. Persian group name, English word, or chat ID).
+            limit: Maximum dialogs to inspect (default 50).
+        """
+        dialogs = await bale_get_dialogs(limit=limit, resolve_titles=True)
+        clean_q = query.strip().lower()
+
+        matched: List[Dict[str, Any]] = []
+        for d in dialogs:
+            title = str(d.get("title", "")).lower()
+            chat_id_str = str(d.get("chat_id", ""))
+            last_msg_text = str(d.get("last_message", {}).get("text", "")).lower()
+
+            if clean_q in title or clean_q == chat_id_str or clean_q in last_msg_text:
+                matched.append(d)
+
+        return matched
 
     @server.tool(
         name="bale_get_chat_history",
