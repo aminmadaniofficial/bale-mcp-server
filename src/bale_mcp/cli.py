@@ -126,6 +126,7 @@ def login(phone: str):
                 console.print(f"[bold red]Login Failed:[/bold red] {val_res.get('message', val_res.get('error'))}")
         finally:
             await session_manager.disconnect()
+            await asyncio.sleep(0.25)
 
     asyncio.run(_do_login())
 

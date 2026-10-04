@@ -24,6 +24,7 @@ class SessionManager:
         self._active_session_name: Optional[str] = None
         self._pending_auth_transaction: Optional[str] = None
         self._pending_auth_phone: Optional[int] = None
+        self._temp_auth_client: Optional[Client] = None
         self._lock = asyncio.Lock()
 
     @property
@@ -261,6 +262,13 @@ class SessionManager:
         Requests an SMS/Bale verification code for the given phone number.
         """
         async with self._lock:
+            if self._temp_auth_client:
+                try:
+                    await self._temp_auth_client.stop()
+                except Exception:
+                    pass
+                self._temp_auth_client = None
+
             sessions_dir = config.ensure_sessions_dir()
             session_file = sessions_dir / f"{phone_number}.bale"
 
@@ -268,12 +276,17 @@ class SessionManager:
             res = await temp_client.start_phone_auth(phone_number=phone_number)
 
             if isinstance(res, AuthErrors):
+                try:
+                    await temp_client.stop()
+                except Exception:
+                    pass
                 return {
                     "success": False,
                     "error": str(res.name),
                     "message": f"Authentication failed with error: {res.name}"
                 }
 
+            self._temp_auth_client = temp_client
             self._pending_auth_transaction = res.transaction_hash
             self._pending_auth_phone = phone_number
 
@@ -302,17 +315,23 @@ class SessionManager:
             sessions_dir = config.ensure_sessions_dir()
             session_file = sessions_dir / f"{phone}.bale"
 
-            temp_client = Client(session_file=str(session_file))
+            temp_client = self._temp_auth_client or Client(session_file=str(session_file))
             res = await temp_client.validate_code(code=str(code).strip(), transaction_hash=tx_hash)
 
             if isinstance(res, AuthErrors):
                 if res == AuthErrors.PASSWORD_NEEDED:
+                    self._temp_auth_client = temp_client
                     return {
                         "success": False,
                         "status": "PASSWORD_NEEDED",
                         "transaction_hash": tx_hash,
                         "message": "Two-Factor Authentication (2FA) password is required. Call bale_auth_verify_password."
                     }
+                try:
+                    await temp_client.stop()
+                except Exception:
+                    pass
+                self._temp_auth_client = None
                 return {
                     "success": False,
                     "error": str(res.name),
@@ -325,6 +344,7 @@ class SessionManager:
             self._active_session_name = str(phone)
             self._pending_auth_transaction = None
             self._pending_auth_phone = None
+            self._temp_auth_client = None
 
             return {
                 "success": True,
@@ -352,10 +372,15 @@ class SessionManager:
             sessions_dir = config.ensure_sessions_dir()
             session_file = sessions_dir / f"{phone}.bale"
 
-            temp_client = Client(session_file=str(session_file))
+            temp_client = self._temp_auth_client or Client(session_file=str(session_file))
             res = await temp_client.validate_password(password=password, transaction_hash=tx_hash)
 
             if isinstance(res, AuthErrors):
+                try:
+                    await temp_client.stop()
+                except Exception:
+                    pass
+                self._temp_auth_client = None
                 return {
                     "success": False,
                     "error": str(res.name),
@@ -367,6 +392,7 @@ class SessionManager:
             self._active_session_name = str(phone)
             self._pending_auth_transaction = None
             self._pending_auth_phone = None
+            self._temp_auth_client = None
 
             return {
                 "success": True,
@@ -381,6 +407,13 @@ class SessionManager:
         Disconnects the active client session.
         """
         async with self._lock:
+            if self._temp_auth_client:
+                try:
+                    await self._temp_auth_client.stop()
+                except Exception:
+                    pass
+                self._temp_auth_client = None
+
             if not self._active_client:
                 return {"success": True, "message": "No active session to disconnect."}
 
