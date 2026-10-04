@@ -21,8 +21,11 @@ def register_contacts_tools(server: MCPServer) -> None:
         Retrieves contact list.
         """
         client = await session_manager.get_client()
-        contacts = await client.load_contacts()
-        return [serialize_entity(c) for c in contacts]
+        try:
+            contacts = await client.load_contacts()
+            return [serialize_entity(c) for c in contacts]
+        except Exception as e:
+            return [{"error": str(e)}]
 
     @server.tool(
         name="bale_search_user",
@@ -40,20 +43,23 @@ def register_contacts_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         clean_query = query.strip().lstrip("@")
 
-        if clean_query.isdigit() and len(clean_query) >= 10:
-            user = await client.search_contact(phone_number=clean_query)
-            return {"found": user is not None, "type": "user", "result": serialize_entity(user)}
+        try:
+            if clean_query.isdigit() and len(clean_query) >= 10:
+                user = await client.search_contact(phone_number=clean_query)
+                return {"found": user is not None, "type": "user", "result": serialize_entity(user)}
 
-        res = await client.search_username(username=clean_query)
-        user = getattr(res, "user", None)
-        group = getattr(res, "group", None)
+            res = await client.search_username(username=clean_query)
+            user = getattr(res, "user", None)
+            group = getattr(res, "group", None)
 
-        if user:
-            return {"found": True, "type": "user", "result": serialize_entity(user)}
-        elif group:
-            return {"found": True, "type": "group_or_channel", "result": serialize_entity(group)}
+            if user:
+                return {"found": True, "type": "user", "result": serialize_entity(user)}
+            elif group:
+                return {"found": True, "type": "group_or_channel", "result": serialize_entity(group)}
 
-        return {"found": False, "query": query, "message": "No user or group found with this query."}
+            return {"found": False, "query": query, "message": "No user or group found with this query."}
+        except Exception as e:
+            return {"found": False, "error": str(e)}
 
     @server.tool(
         name="bale_get_user_info",
@@ -95,8 +101,11 @@ def register_contacts_tools(server: MCPServer) -> None:
             name = str(c.get("name", "Contact"))
             prepared_list.append((phone, name))
 
-        peers = await client.import_contacts(prepared_list)
-        return {"success": True, "imported_count": len(peers), "peers": [serialize_entity(p) for p in peers]}
+        try:
+            peers = await client.import_contacts(prepared_list)
+            return {"success": True, "imported_count": len(peers), "peers": [serialize_entity(p) for p in peers]}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_block_user",
@@ -110,8 +119,11 @@ def register_contacts_tools(server: MCPServer) -> None:
             user_id: Target user ID to block.
         """
         client = await session_manager.get_client()
-        res = await client.block_user(user_id=user_id)
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.block_user(user_id=user_id)
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_unblock_user",
@@ -125,8 +137,11 @@ def register_contacts_tools(server: MCPServer) -> None:
             user_id: Target user ID to unblock.
         """
         client = await session_manager.get_client()
-        res = await client.unblock_user(user_id=user_id)
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.unblock_user(user_id=user_id)
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_get_blocked_users",
@@ -137,5 +152,8 @@ def register_contacts_tools(server: MCPServer) -> None:
         Retrieves list of blocked users.
         """
         client = await session_manager.get_client()
-        blocked = await client.load_blocked_users()
-        return [serialize_entity(u) for u in blocked]
+        try:
+            blocked = await client.load_blocked_users()
+            return [serialize_entity(u) for u in blocked]
+        except Exception as e:
+            return [{"error": str(e)}]

@@ -48,8 +48,11 @@ def register_groups_tools(server: MCPServer) -> None:
             limit: Maximum members to return (default 50).
         """
         client = await session_manager.get_client()
-        members = await client.load_members(chat_id=group_id, limit=limit)
-        return [serialize_entity(m) for m in members]
+        try:
+            members = await client.load_members(chat_id=group_id, limit=limit)
+            return [serialize_entity(m) for m in members]
+        except Exception as e:
+            return [{"error": str(e)}]
 
     @server.tool(
         name="bale_create_group",
@@ -74,14 +77,16 @@ def register_groups_tools(server: MCPServer) -> None:
         target_type = GroupType.CHANNEL if is_channel else GroupType.GROUP
         users_tuple = tuple(user_ids or [])
 
-        res = await client.create_group(
-            title=title,
-            username=username,
-            users=users_tuple,
-            group_type=target_type,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.create_group(
+                title=title,
+                username=username,
+                users=users_tuple,
+                group_type=target_type,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_invite_to_group",
@@ -99,8 +104,11 @@ def register_groups_tools(server: MCPServer) -> None:
             user_ids: List of user IDs to invite.
         """
         client = await session_manager.get_client()
-        res = await client.invite_users(chat_id=group_id, users=user_ids)
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.invite_users(chat_id=group_id, users=user_ids)
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_get_group_invite_url",
@@ -117,7 +125,7 @@ def register_groups_tools(server: MCPServer) -> None:
         """
         client = await session_manager.get_client()
         try:
-            url = await client.get_group_invite_url(chat_id=group_id)
+            url = await client.get_group_link(chat_id=group_id)
             return {"success": True, "url": getattr(url, "url", str(url))}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -136,5 +144,8 @@ def register_groups_tools(server: MCPServer) -> None:
             group_id: Group ID to leave.
         """
         client = await session_manager.get_client()
-        res = await client.leave_group(chat_id=group_id)
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.leave_group(chat_id=group_id)
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

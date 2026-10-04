@@ -246,14 +246,16 @@ def register_messaging_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        res = await client.edit_message(
-            text=new_text,
-            message_id=message_id,
-            chat_id=chat_id,
-            chat_type=resolved_type,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.edit_message(
+                text=new_text,
+                message_id=message_id,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_delete_message",
@@ -277,15 +279,17 @@ def register_messaging_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        res = await client.delete_message(
-            message_id=message_id,
-            message_date=0,
-            chat_id=chat_id,
-            chat_type=resolved_type,
-            just_me=just_me,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.delete_message(
+                message_id=message_id,
+                message_date=0,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+                just_me=just_me,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_forward_message",
@@ -312,20 +316,22 @@ def register_messaging_tools(server: MCPServer) -> None:
         src_type = resolve_chat_type(from_chat_type)
         dst_type = resolve_chat_type(to_chat_type)
 
-        peer_type = client._resolve_peer_type(src_type)
-        info_msg = InfoMessage(
-            peer=Peer(type=peer_type, id=from_chat_id),
-            message_id=message_id,
-            date=IntValue(value=0),
-        )
+        try:
+            peer_type = client._resolve_peer_type(src_type)
+            info_msg = InfoMessage(
+                peer=Peer(type=peer_type, id=from_chat_id),
+                message_id=message_id,
+                date=IntValue(value=0),
+            )
 
-        res = await client.forward_message(
-            message=info_msg,
-            chat_id=to_chat_id,
-            chat_type=dst_type,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+            res = await client.forward_message(
+                message=info_msg,
+                chat_id=to_chat_id,
+                chat_type=dst_type,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_mark_chat_read",
@@ -345,8 +351,11 @@ def register_messaging_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        res = await client.seen_chat(chat_id=chat_id, chat_type=resolved_type)
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.seen_chat(chat_id=chat_id, chat_type=resolved_type)
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_pin_message",
@@ -370,12 +379,14 @@ def register_messaging_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        res = await client.pin_message(
-            message_id=message_id,
-            message_date=0,
-            chat_id=chat_id,
-            chat_type=resolved_type,
-            just_me=just_me,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.pin_message(
+                message_id=message_id,
+                message_date=0,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+                just_me=just_me,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}

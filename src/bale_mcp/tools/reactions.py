@@ -36,14 +36,16 @@ def register_reactions_tools(server: MCPServer) -> None:
         resolved_type = resolve_chat_type(chat_type)
 
         msg_ref = OtherMessage(message_id=message_id, date=0)
-        res = await client.set_reaction(
-            emojy=emoji,
-            message=msg_ref,
-            chat_id=chat_id,
-            chat_type=resolved_type,
-        )
-
-        return {"success": True, "reactions": serialize_entity(res)}
+        try:
+            res = await client.set_reaction(
+                emojy=emoji,
+                message=msg_ref,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+            )
+            return {"success": True, "reactions": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_remove_reaction",
@@ -68,14 +70,16 @@ def register_reactions_tools(server: MCPServer) -> None:
         resolved_type = resolve_chat_type(chat_type)
 
         msg_ref = OtherMessage(message_id=message_id, date=0)
-        res = await client.remove_reaction(
-            emojy=emoji,
-            message=msg_ref,
-            chat_id=chat_id,
-            chat_type=resolved_type,
-        )
-
-        return {"success": True, "reactions": serialize_entity(res)}
+        try:
+            res = await client.remove_reaction(
+                emojy=emoji,
+                message=msg_ref,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+            )
+            return {"success": True, "reactions": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @server.tool(
         name="bale_send_typing",
@@ -95,10 +99,12 @@ def register_reactions_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        res = await client.start_typing(
-            chat_id=chat_id,
-            chat_type=resolved_type,
-            typing_mode=TypingMode.TEXT,
-        )
-
-        return {"success": True, "result": serialize_entity(res)}
+        try:
+            res = await client.start_typing(
+                chat_id=chat_id,
+                chat_type=resolved_type,
+                typing_mode=TypingMode.TEXT,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
