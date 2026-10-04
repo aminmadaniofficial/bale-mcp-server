@@ -90,6 +90,17 @@ def format_message_summary(msg: Any) -> Dict[str, Any]:
     date = getattr(msg, "date", None)
     reply_to = getattr(getattr(msg, "reply_to_message", None), "message_id", None)
 
+    # If text is empty, check for caption in document or photo
+    if not text:
+        doc = getattr(msg, "document", None)
+        photo = getattr(msg, "photo", None)
+        if doc and getattr(doc, "caption", None):
+            cap = doc.caption
+            text = getattr(cap, "content", str(cap)) if hasattr(cap, "content") else str(cap)
+        elif photo and getattr(photo, "caption", None):
+            cap = photo.caption
+            text = getattr(cap, "content", str(cap)) if hasattr(cap, "content") else str(cap)
+
     summary: Dict[str, Any] = {
         "message_id": message_id,
         "chat_id": chat_id,

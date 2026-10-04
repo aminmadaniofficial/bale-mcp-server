@@ -97,32 +97,35 @@ def login(phone: str):
     console.print(f"[cyan]Sending verification code to [bold]{phone_int}[/bold]...[/cyan]")
 
     async def _do_login():
-        res = await session_manager.start_phone_auth(phone_int)
-        if not res.get("success"):
-            console.print(f"[bold red]Failed to send code:[/bold red] {res.get('message', res.get('error'))}")
-            return
+        try:
+            res = await session_manager.start_phone_auth(phone_int)
+            if not res.get("success"):
+                console.print(f"[bold red]Failed to send code:[/bold red] {res.get('message', res.get('error'))}")
+                return
 
-        tx_hash = res.get("transaction_hash")
-        code = click.prompt("Enter verification code received via SMS/Bale")
+            tx_hash = res.get("transaction_hash")
+            code = click.prompt("Enter verification code received via SMS/Bale")
 
-        val_res = await session_manager.verify_code(code=code, transaction_hash=tx_hash)
+            val_res = await session_manager.verify_code(code=code, transaction_hash=tx_hash)
 
-        if val_res.get("status") == "PASSWORD_NEEDED":
-            console.print("[yellow]Two-Factor Authentication is active for this account.[/yellow]")
-            pwd = click.prompt("Enter 2FA Cloud Password", hide_input=True)
-            val_res = await session_manager.verify_password(password=pwd, transaction_hash=tx_hash)
+            if val_res.get("status") == "PASSWORD_NEEDED":
+                console.print("[yellow]Two-Factor Authentication is active for this account.[/yellow]")
+                pwd = click.prompt("Enter 2FA Cloud Password", hide_input=True)
+                val_res = await session_manager.verify_password(password=pwd, transaction_hash=tx_hash)
 
-        if val_res.get("success"):
-            console.print(
-                Panel(
-                    f"[bold green]Login Successful! 🎉[/bold green]\n"
-                    f"Session saved as: [cyan]{phone_int}.bale[/cyan]\n"
-                    f"User ID: [magenta]{val_res.get('user_id')}[/magenta]",
-                    title="Authentication Complete",
+            if val_res.get("success"):
+                console.print(
+                    Panel(
+                        f"[bold green]Login Successful! 🎉[/bold green]\n"
+                        f"Session saved as: [cyan]{phone_int}.bale[/cyan]\n"
+                        f"User ID: [magenta]{val_res.get('user_id')}[/magenta]",
+                        title="Authentication Complete",
+                    )
                 )
-            )
-        else:
-            console.print(f"[bold red]Login Failed:[/bold red] {val_res.get('message', val_res.get('error'))}")
+            else:
+                console.print(f"[bold red]Login Failed:[/bold red] {val_res.get('message', val_res.get('error'))}")
+        finally:
+            await session_manager.disconnect()
 
     asyncio.run(_do_login())
 
