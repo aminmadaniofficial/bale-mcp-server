@@ -28,7 +28,10 @@ def register_messaging_tools(server: MCPServer) -> None:
             exclude_pinned: Whether to exclude pinned dialogs.
         """
         client = await session_manager.get_client()
-        dialogs = await client.load_dialogs(limit=limit, exclude_pinned=exclude_pinned)
+        try:
+            dialogs = await client.load_dialogs(limit=limit, exclude_pinned=exclude_pinned)
+        except Exception as e:
+            return [{"error": f"Failed to retrieve dialogs: {e}"}]
 
         results: List[Dict[str, Any]] = []
         for d in dialogs:
@@ -73,14 +76,19 @@ def register_messaging_tools(server: MCPServer) -> None:
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
 
-        messages = await client.load_history(
-            chat_id=chat_id,
-            chat_type=resolved_type,
-            limit=limit,
-            offset_date=offset_date,
-        )
+        import time
+        eff_offset = int(time.time() * 1000) if (offset_date is None or offset_date <= 0) else offset_date
 
-        return [format_message_summary(msg) for msg in messages]
+        try:
+            messages = await client.load_history(
+                chat_id=chat_id,
+                chat_type=resolved_type,
+                limit=limit,
+                offset_date=eff_offset,
+            )
+            return [format_message_summary(msg) for msg in messages]
+        except Exception as e:
+            return [{"error": f"Failed to retrieve history: {e}"}]
 
     @server.tool(
         name="bale_send_message",
