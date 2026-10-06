@@ -54,3 +54,8 @@ sessions/*
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Logs & Local data
+*.log
+data/
+

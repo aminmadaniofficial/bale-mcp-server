@@ -3,9 +3,12 @@
 <div align="center">
 
 [![CI Test Suite](https://github.com/aminmadaniofficial/bale-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/aminmadaniofficial/bale-mcp-server/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Tools](https://img.shields.io/badge/Tools-32%20Ready-success.svg)](#-complete-mcp-tools-catalog-32-tools)
+[![Powered by aiobale](https://img.shields.io/badge/Powered%20by-aiobale--py-3b82f6.svg)](https://github.com/aminmadaniofficial/aiobale)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard-purple.svg)](https://modelcontextprotocol.io/)
+[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/aminmadaniofficial/bale-mcp-server?style=social)](https://github.com/aminmadaniofficial/bale-mcp-server)
 
 **Production-grade Model Context Protocol (MCP) server for Bale Messenger.**  
 Empowers Large Language Models (LLMs) to authenticate, inspect dialogs, read histories, send messages, interact with groups, and manage contacts on Bale user accounts.
