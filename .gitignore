@@ -59,3 +59,8 @@ htmlcov/
 *.log
 data/
 
+# Personal testing & experimental scripts
+scripts/*
+!scripts/live_suite_test.py
+
+
