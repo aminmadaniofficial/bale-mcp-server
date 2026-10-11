@@ -48,7 +48,7 @@ LLM Client (Claude Desktop / Cursor / Antigravity / Cline)
 
 ---
 
-## 🛠️ Complete MCP Tools Catalog (32 Tools)
+## 🛠️ Complete MCP Tools Catalog (34 Tools)
 
 ### 🔐 Authentication & Session Management
 | Tool Name | Description |
@@ -68,7 +68,9 @@ LLM Client (Claude Desktop / Cursor / Antigravity / Cline)
 | `bale_search_dialogs` | Search dialogs and groups by title/name (in Persian or English) or chat ID. |
 | `bale_get_chat_history` | Fetch recent message history from a chat, group, or channel. |
 | `bale_send_message` | Send a text message to a user, group, or channel with optional reply support. |
-| `bale_edit_message` | Edit an existing text message sent previously in a chat. |
+| `bale_edit_message` | Edit an existing text message or media caption (automatic media fallback). |
+| `bale_edit_media_caption` | Update caption of existing media (photos, videos, GIFs, docs) with metadata sanitization. |
+| `bale_batch_edit_messages`| Batch edit multiple messages/captions in a single call with anti-flood throttling. |
 | `bale_delete_message` | Delete a message from a chat (for self or everyone). |
 | `bale_forward_message` | Forward an existing message to another chat or user. |
 | `bale_mark_chat_read` | Mark all messages in a chat or group as read. |

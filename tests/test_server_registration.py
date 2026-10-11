@@ -28,6 +28,8 @@ async def test_all_tools_registered():
         "bale_get_chat_history",
         "bale_send_message",
         "bale_edit_message",
+        "bale_edit_media_caption",
+        "bale_batch_edit_messages",
         "bale_delete_message",
         "bale_forward_message",
         "bale_mark_chat_read",
@@ -54,7 +56,7 @@ async def test_all_tools_registered():
     }
 
     assert expected_tools.issubset(tool_names), f"Missing tools: {expected_tools - tool_names}"
-    assert len(tools) >= 31
+    assert len(tools) >= 33
 
     for t in tools:
         assert t.description, f"Tool {t.name} is missing a description!"

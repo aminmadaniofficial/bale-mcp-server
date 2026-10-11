@@ -226,22 +226,24 @@ def register_messaging_tools(server: MCPServer) -> None:
 
     @server.tool(
         name="bale_edit_message",
-        description="Edit an existing text message sent previously in a chat.",
+        description="Edit an existing text message or media caption previously sent in a chat. Automatically falls back to media caption editing if text update is rejected by the server.",
     )
     async def bale_edit_message(
         chat_id: int,
         message_id: int,
         new_text: str,
         chat_type: str = "private",
+        is_caption: bool = False,
     ) -> Dict[str, Any]:
         """
-        Edits an existing message.
+        Edits an existing message or media caption.
 
         Args:
             chat_id: Chat ID containing the message.
             message_id: The ID of the message to update.
-            new_text: New text content for the message.
+            new_text: New text content or caption for the message.
             chat_type: Chat type ('private', 'group', 'channel'). Default is 'private'.
+            is_caption: Explicitly mark this edit as a media caption update (default False).
         """
         client = await session_manager.get_client()
         resolved_type = resolve_chat_type(chat_type)
@@ -252,10 +254,104 @@ def register_messaging_tools(server: MCPServer) -> None:
                 message_id=message_id,
                 chat_id=chat_id,
                 chat_type=resolved_type,
+                is_caption=is_caption,
             )
             return {"success": True, "result": serialize_entity(res)}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    @server.tool(
+        name="bale_edit_media_caption",
+        description="Edit or update the caption of an existing media message (photo, video, GIF, audio, or document). Automatically resolves and sanitizes media protobuf metadata.",
+    )
+    async def bale_edit_media_caption(
+        chat_id: int,
+        message_id: int,
+        caption: str,
+        chat_type: str = "private",
+    ) -> Dict[str, Any]:
+        """
+        Edits the caption of a media message.
+
+        Args:
+            chat_id: Chat ID containing the media message.
+            message_id: The ID of the media message to update.
+            caption: New caption text to apply.
+            chat_type: Chat type ('private', 'group', 'channel'). Default is 'private'.
+        """
+        client = await session_manager.get_client()
+        resolved_type = resolve_chat_type(chat_type)
+
+        try:
+            res = await client.edit_caption(
+                caption=caption,
+                message_id=message_id,
+                chat_id=chat_id,
+                chat_type=resolved_type,
+            )
+            return {"success": True, "result": serialize_entity(res)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @server.tool(
+        name="bale_batch_edit_messages",
+        description="Batch edit multiple messages or media captions in a single tool call to maximize throughput and avoid round-trip latency.",
+    )
+    async def bale_batch_edit_messages(
+        chat_id: int,
+        edits: List[Dict[str, Any]],
+        chat_type: str = "private",
+        delay_seconds: float = 0.05,
+    ) -> Dict[str, Any]:
+        """
+        Performs batch message/caption edits for high efficiency.
+
+        Args:
+            chat_id: Target chat, group, or channel ID.
+            edits: List of edits to perform, e.g. [{"message_id": 123, "text": "new text", "is_caption": False}].
+            chat_type: Chat type ('private', 'group', 'channel'). Default is 'private'.
+            delay_seconds: Anti-flood pause between edits in seconds (default 0.05).
+        """
+        client = await session_manager.get_client()
+        resolved_type = resolve_chat_type(chat_type)
+
+        results: List[Dict[str, Any]] = []
+        succeeded = 0
+        failed = 0
+
+        for item in edits:
+            msg_id = item.get("message_id")
+            new_text = item.get("text", "")
+            is_caption = bool(item.get("is_caption", False))
+
+            if not msg_id:
+                results.append({"success": False, "error": "Missing message_id in edit item"})
+                failed += 1
+                continue
+
+            try:
+                res = await client.edit_message(
+                    text=new_text,
+                    message_id=int(msg_id),
+                    chat_id=chat_id,
+                    chat_type=resolved_type,
+                    is_caption=is_caption,
+                )
+                results.append({"message_id": msg_id, "success": True, "result": serialize_entity(res)})
+                succeeded += 1
+            except Exception as e:
+                results.append({"message_id": msg_id, "success": False, "error": str(e)})
+                failed += 1
+
+            if delay_seconds > 0 and len(edits) > 1:
+                await asyncio.sleep(delay_seconds)
+
+        return {
+            "total": len(edits),
+            "succeeded": succeeded,
+            "failed": failed,
+            "results": results,
+        }
 
     @server.tool(
         name="bale_delete_message",
